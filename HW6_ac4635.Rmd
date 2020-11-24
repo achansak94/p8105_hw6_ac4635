@@ -1,0 +1,13 @@
+---
+title: "Homework 2"
+author: "JR Chansakul"
+date: 2020-12-04
+output: github_document
+  
+---
+
+```{r load_libraries}
+library(tidyverse)
+library(modelr)
+library(p8105.datasets)
+```
