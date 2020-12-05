@@ -91,18 +91,38 @@ models_results_df %>%
 Find some residuals
 
 ```{r}
-baby_df = 
-  read_csv("./data/birthweight.csv")
+birthweight_df = 
+  read_csv("./data/birthweight.csv") %>%
+  janitor::clean_names() %>% 
+  mutate(babysex = as.factor(babysex), 
+         malform = as.factor(malform),
+         frace = as.factor(frace), 
+         mrace = as.factor(mrace))
+
+
+birthweight_df %>% 
+  ggplot(aes(x = bwt)) + 
+  geom_histogram()
+
 ```
 
 fit a model
 
 ```{r}
-model_fit = lm(bwt ~ gaweeks, data = baby_df)
+model_fit = lm(bwt ~ gaweeks, data = birthweight_df)
 ```
 
 ```{r}
-baby_df %>% 
+birthweight_df %>% 
   modelr::add_residuals(model_fit) %>% 
   ggplot(aes(x = gaweeks, y = resid)) + 
   geom_point()
+
+```
+
+
+
+
+
+
+
