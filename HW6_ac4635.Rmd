@@ -1,7 +1,7 @@
 ---
-title: "Homework 2"
+title: "Homework 6"
 author: "JR Chansakul"
-date: 2020-12-04
+date: 2020-12-09
 output: github_document
   
 ---
@@ -88,38 +88,105 @@ models_results_df %>%
 
 ## Problem 2
 
-Find some residuals
+Load and clean the data for regression analysis (i.e. convert numeric to factor where appropriate, check for missing data, etc.).
 
 ```{r}
+
+## Clean Data for Regression Analysis
 birthweight_df = 
-  read_csv("./data/birthweight.csv") %>%
+  read_csv("./data/birthweight.csv", na = c("", "NA", "Unknown")) %>%
   janitor::clean_names() %>% 
   mutate(babysex = as.factor(babysex), 
          malform = as.factor(malform),
          frace = as.factor(frace), 
-         mrace = as.factor(mrace))
+         mrace = as.factor(mrace),
+         babysex = recode(babysex, 
+                          "1" = "Male", 
+                          "2" = "Female"),
+         frace = recode (frace,
+                         "1" = "White", 
+                         "2" = "Black", 
+                         "3" = "Asian", 
+                         "4" = "Puerto Rican",
+                         "8" = "Other",
+                         "9" = "Unknown"),
+         malform = recode(malform, 
+                          "0" = "absent",
+                          "1" = "present"),
+         mrace = recode(mrace,
+                        "1" = "White", 
+                        "2" = "Black", 
+                        "3" = "Asian", 
+                        "4" = "Puerto Rican", 
+                        "8" = "Other"))
+            
+##Check for missing values - None 
+sum(!complete.cases(birthweight_df))
 
-
-birthweight_df %>% 
-  ggplot(aes(x = bwt)) + 
-  geom_histogram()
+## Check distributions and variable typles 
+birthweight_df %>%
+  skimr::skim()
 
 ```
 
-fit a model
+Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
 
 ```{r}
-model_fit = lm(bwt ~ gaweeks, data = birthweight_df)
+
+## Full Model 
+full_model = lm(bwt ~ ., data = birthweight_df)
+
+## Backward Stepwise Regression Method  
+step(full_model, direction = "backward") 
+step(full_model, direction = "backward")[["terms"]]
+
+## Fitted Model 
+fitted_model1 = lm(bwt ~ babysex + bhead + blength + delwt + fincome + 
+    gaweeks + mheight + mrace + parity + ppwt + smoken, data = birthweight_df)
+
+summary(fitted_model1)
+
+## Plot of model residuals against fitted values
+
+birthweight_df %>% 
+  modelr::add_residuals(fitted_model1) %>%
+  modelr::add_predictions(fitted_model1) %>% 
+  ggplot(aes(x = pred, y = resid)) + 
+  geom_point(alpha = 0.2) +
+  geom_hline(yintercept = 0, color = "blue")
+
+  labs(
+    x = "Fitted Values",
+    y = "Residuals",
+    title = "Residuals against fitted values") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
+
+ 
+Compare your model to two others:
+
+One using length at birth and gestational age as predictors (main effects only)
+One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
 
 ```{r}
-birthweight_df %>% 
-  modelr::add_residuals(model_fit) %>% 
-  ggplot(aes(x = gaweeks, y = resid)) + 
-  geom_point()
+
+## Simple Model
+model2 = lm(bwt ~ blength + gaweeks, data = birthweight_df)
+
+##  Interaction Model (2 ways)
+
+interaction_model3 = lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + blength*babysex + bhead*blength*babysex, data = birthweight_df)
+
+#Option2
+model3 = lm(bwt ~ (bhead + blength + babysex)^3, birthweight_df)
 
 ```
+```
+ 
 
+```{r}
+
+```
 
 
 
