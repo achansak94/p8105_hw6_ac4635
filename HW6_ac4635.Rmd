@@ -173,23 +173,44 @@ One using head circumference, length, sex, and all interactions (including the t
 ## Simple Model
 model2 = lm(bwt ~ blength + gaweeks, data = birthweight_df)
 
-##  Interaction Model (2 ways)
-
-interaction_model3 = lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + blength*babysex + bhead*blength*babysex, data = birthweight_df)
-
-#Option2
+## Interaction Model
 model3 = lm(bwt ~ (bhead + blength + babysex)^3, birthweight_df)
 
 ```
-```
- 
+
+Make this comparison in terms of the cross-validated prediction error; use crossv_mc and functions in purrr as appropriate.
 
 ```{r}
 
+## Cross Validation comparison 
+cv_df = 
+  crossv_mc(birthweight_df, 100) %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble))
+
+cv_df = 
+  cv_df %>% 
+  mutate(
+    fitted_model1 = map(train, ~lm(bwt ~ babysex + bhead + blength + delwt + fincome + gaweeks + mheight + mrace + parity + ppwt + smoken, data = .x)),
+    model2 = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
+    model3 = map(train, ~lm(bwt ~ (bhead + blength + babysex)^3, data = .x))) %>% 
+  mutate(
+    rmse_mod1 = map2_dbl(fitted_model1, test, ~rmse(model = .x, data = .y)),
+    rmse_mod2 = map2_dbl(model2, test, ~rmse(model = .x, data = .y)),
+    rmse_mod3 = map2_dbl(model3, test, ~rmse(model = .x, data = .y)))
+
+##RMSE Comparisons
+
+cv_df %>%
+  select(starts_with("rmse")) %>% 
+  unnest() %>% 
+  gather(key = "model", value = "rmse") %>% 
+  mutate(model = 
+           str_replace(model, "rmse_", "")) %>% 
+  ggplot(aes(x = model, y = rmse)) +
+  geom_violin(aes(fill = model)) + 
+  labs(title = "RMSE Comparison") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
-
-
-
-
-
 
