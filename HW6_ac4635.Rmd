@@ -15,7 +15,7 @@ library(p8105.datasets)
 
 ### Problem 1
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 homicide_df = 
   read_csv("data/homicide-data.csv", na = c("", "NA", "Unknown")) %>% 
   mutate(
@@ -35,7 +35,7 @@ homicide_df =
 
 Start with one city.
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 baltimore_df =
   homicide_df %>% 
   filter(city_state == "Baltimore, MD")
@@ -55,7 +55,7 @@ glm(resolution ~ victim_age + victim_race + victim_sex,
 
 Try this across cities.
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 models_results_df = 
   homicide_df %>% 
   nest(data = -city_state) %>% 
@@ -74,7 +74,7 @@ models_results_df =
   select(city_state, term, OR, starts_with("CI")) 
 ```
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 models_results_df %>% 
   filter(term == "victim_sexMale") %>% 
   mutate(city_state = fct_reorder(city_state, OR)) %>% 
@@ -88,9 +88,9 @@ models_results_df %>%
 
 ## Problem 2
 
-Load and clean the data for regression analysis (i.e. convert numeric to factor where appropriate, check for missing data, etc.).
+# Load and clean the data for regression analysis 
 
-```{r}
+```{r results = "hide", message = FALSE, warning = FALSE}
 
 ## Clean Data for Regression Analysis
 birthweight_df = 
@@ -129,9 +129,9 @@ birthweight_df %>%
 
 ```
 
-Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+# Regression method, modeling process and plot
 
-```{r}
+```{r results = "hide", message = FALSE, warning = FALSE}
 
 ## Full Model 
 full_model = lm(bwt ~ ., data = birthweight_df)
@@ -162,25 +162,27 @@ birthweight_df %>%
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+The first was fitting a full model that contains all variables provided and then I used a backward function to perform a backward stepwise regression to removed variables that are insignifcant with the outcome of interest, baby's birth weight. When I performed this stepwise regression method, the babysex,  bhead, blength, delwt, fincome, gaweeks, mheight, mrace, parity, ppwt, and smoken variables were included into the best fit model to compare with other models.  
+
+The residuals vs fitted values plot displays constant variance and that the majority of the residuals fall around 0.
+
  
-Compare your model to two others:
+## Other Models 
 
-One using length at birth and gestational age as predictors (main effects only)
-One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 
-## Simple Model
+## Simple Model - One using length at birth and gestational age as predictors 
 model2 = lm(bwt ~ blength + gaweeks, data = birthweight_df)
 
-## Interaction Model
+## Interaction Model - One using head circumference, length, sex, and all interactions 
 model3 = lm(bwt ~ (bhead + blength + babysex)^3, birthweight_df)
 
 ```
 
-Make this comparison in terms of the cross-validated prediction error; use crossv_mc and functions in purrr as appropriate.
+## Comparison in terms of the cross-validated prediction error
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 
 ## Cross Validation comparison 
 cv_df = 
@@ -213,4 +215,111 @@ cv_df %>%
   labs(title = "RMSE Comparison") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
+
+Out of the 3 violin plots, we can conclude that the stepwise regression  model has the lowest RMSE relative to model2 and model3, suggesting this model best fits our data.
+
+
+## Problem 3
+
+
+```{r}
+
+## Import data 
+
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+## Plot the distribution of estimates
+
+```{r results = "hide", message = FALSE, warning = FALSE}
+
+## Use boot_sample to draw bootstrap samples.
+
+boot_sample = function(df) {
+  sample_frac(df, replace = TRUE)
+}
+
+boot_straps = 
+  data_frame(
+    strap_number = 1:5000,
+    strap_sample = rerun(5000, boot_sample(weather_df))
+  )
+```
+
+
+```{r message = FALSE, warning = FALSE}
+
+## Clean and tidying dataset 
+bootstrap_results = 
+  boot_straps %>% 
+  mutate(
+    models = map(strap_sample, ~lm(tmax ~ tmin, data = .x)),
+    results = map(models, broom::tidy),
+    r_squared = map(models, broom::glance)) 
+
+## Adjusted R-squared Plot
+rsquared_df =
+  bootstrap_results %>% 
+  select(-strap_sample, -models) %>% 
+  unnest(r_squared)
+  
+rsquared_df %>%   
+  ggplot(aes(x = adj.r.squared)) + 
+  geom_histogram(alpha = 0.6, color = "black") +
+  labs(title="Distribution of Adj. R-Squared") +
+    theme(plot.title = element_text(hjust = 0.5))
+
+## Log Parameter Product Plot
+estimate_df = 
+  bootstrap_results %>% 
+  select(-strap_sample, -models) %>% 
+  unnest(results) %>% 
+  select(term, estimate) %>%
+  pivot_wider(
+    names_from = term,
+    values_from = estimate
+  ) %>% 
+  unnest() %>% 
+  rename (Intercept = '(Intercept)') %>%
+  mutate(logB = log(tmin*Intercept)) 
+  
+estimate_df %>% 
+  ggplot(aes(x = logB)) + 
+  geom_histogram(alpha = 0.6, color = "black") +
+  labs(title="Distribution of Log Parameter Product")
+
+```
+
+The distribution for the adjusted R-squared values and log paramter plot seem to be normally distributed. The adjusted R-square plot seems to have a peak between 0.90 and 0.92, while the plot of log parameter product plot had a peak between 2.00 and 2.025.
+
+## 95% confidence interval Distributions
+
+```{r message = FALSE, warning = FALSE}
+
+## CI for R-squared
+  rsquared_df %>% 
+  summarize(
+    rsquared_CI_low = quantile(adj.r.squared, 0.025),
+    rsquared_CI_upper = quantile(adj.r.squared, 0.975)
+  )
+
+## CI for Log Parameter Product
+estimate_df %>%
+  summarize(
+    estimate_CI_low = quantile(logB, 0.025),
+    estimate_CI_upper = quantile(logB, 0.975),
+  )
+```
+
+The 95% CI of the adjusted r-squared is `r quantile(pull(rsquared_df, r.squared), probs = c(.025, .975))` and of log of the product is `r quantile(pull(estimate_df, logB), probs = c(.025, .975))`.
 
