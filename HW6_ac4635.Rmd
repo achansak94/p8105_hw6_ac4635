@@ -122,6 +122,7 @@ birthweight_df =
             
 ##Check for missing values - None 
 sum(!complete.cases(birthweight_df))
+purrr::map(birthweight_df, ~ sum(is.na(.)))
 
 ## Check distributions and variable typles 
 birthweight_df %>%
@@ -162,7 +163,9 @@ birthweight_df %>%
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-The first was fitting a full model that contains all variables provided and then I used a backward function to perform a backward stepwise regression to removed variables that are insignifcant with the outcome of interest, baby's birth weight. When I performed this stepwise regression method, the babysex,  bhead, blength, delwt, fincome, gaweeks, mheight, mrace, parity, ppwt, and smoken variables were included into the best fit model to compare with other models.  
+The birthweight dataset contains `r nrow(birthweight_df)` rows and `r ncol(birthweight_df)` column with no missing values. 
+
+The first step for regression was fitting a full model that contains all variables provided and then I used a backward function to perform a backward stepwise regression to removed variables that are insignifcant with the outcome of interest, baby's birth weight. When I performed the stepwise regression method, the babysex,  bhead, blength, delwt, fincome, gaweeks, mheight, mrace, parity, ppwt, and smoken variables were included into the best fit model to compare with other models.  
 
 The residuals vs fitted values plot displays constant variance and that the majority of the residuals fall around 0.
 
